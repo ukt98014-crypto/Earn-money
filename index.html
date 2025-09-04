@@ -540,6 +540,23 @@
       if(userData.hourlyTasksCompleted >= HOURLY_ADS_LIMIT){
         taskBtn.disabled = true; taskBtn.textContent = 'প্রতি ঘন্টার সীমা পৌঁছে গেছে'; return;
       }
+      
+      // NEW: Check if 10 seconds have passed since the last task
+      const timeSinceLastTask = last ? now.getTime() - last.getTime() : Infinity;
+      const minWaitTime = 10 * 1000; // 10 seconds in milliseconds
+      
+      if (timeSinceLastTask < minWaitTime) {
+        const remainingTime = Math.ceil((minWaitTime - timeSinceLastTask) / 1000);
+        taskBtn.disabled = true;
+        taskBtn.textContent = `দয়া করে ${remainingTime} সেকেন্ড অপেক্ষা করুন...`;
+        
+        setTimeout(() => {
+          checkTaskAvailability(); // Re-check after the delay
+        }, remainingTime * 1000);
+        
+        return;
+      }
+      
       taskBtn.disabled = false;
     }
 
@@ -564,6 +581,8 @@
             adStatus.style.color = '#ef476f';
             taskBtn.disabled = false;
             taskBtn.textContent = `বিজ্ঞাপন দেখুন (+${fmt(AD_REWARD_AMOUNT)} টাকা)`;
+            // NEW: In case of error, re-enable the button without delay
+            checkTaskAvailability(); 
           });
       }else{
         // fallback simulation
@@ -584,9 +603,25 @@
       userData.lifetimeTasksCompleted++;
       userData.hourlyTasksCompleted++;
       userData.tasksDone++;
-      userData.lastTaskTime = new Date();
-
-      updateAll(); saveUserData(); checkTaskAvailability();
+      userData.lastTaskTime = new Date(); // Update the last task time
+      
+      updateAll(); saveUserData(); 
+      
+      // NEW: Set a 10-second delay before re-enabling the button
+      const taskBtn = byId('task-btn');
+      taskBtn.disabled = true;
+      let countdown = 10;
+      taskBtn.textContent = `দয়া করে ${countdown} সেকেন্ড অপেক্ষা করুন...`;
+      
+      const countdownInterval = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+          taskBtn.textContent = `দয়া করে ${countdown} সেকেন্ড অপেক্ষা করুন...`;
+        } else {
+          clearInterval(countdownInterval);
+          checkTaskAvailability(); // Re-enable the button
+        }
+      }, 1000);
     }
 
     // ------- Check-in -------
